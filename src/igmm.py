@@ -10,7 +10,7 @@ class IGMM:
     Based on "Incremental Learning of Multivariate Gaussian Mixture Models" by Engel and Heinen
     """
 
-    def __init__(self,n,sig_init,T_nov):
+    def __init__(self,n,sig_init,T_nov,v_min=5.0,sp_min=3.0):
         """Initialize igmm
             
             Parameters:
@@ -25,6 +25,8 @@ class IGMM:
         self.n_comp = 0
         self.sig_init = sig_init
         self.T_nov = T_nov
+        self.v_min = v_min
+        self.sp_min = sp_min
 
 
     def update(self,X):
@@ -42,9 +44,9 @@ class IGMM:
             self.n_comp = 1
             self.mu = [X] #component mean
             self.sig = [self.sig_init**2*np.identity(self.n_dim)] #component covariance
-            self.alpha = [1] #component weight/prior, called p(j) in the paper
-            self.v = [1] #age of component j
-            self.sp = [1] #accumulator of component j
+            self.alpha = [1.0] #component weight/prior, called p(j) in the paper
+            self.v = [1.0] #age of component j
+            self.sp = [1.0] #accumulator of component j
 
         else:
 
@@ -75,13 +77,13 @@ class IGMM:
                 self.alpha.append(1/sum(self.sp))  # component weight/prior, called p(j) in the paper
 
             else:
+                # otherwise we update all the components with the new data
 
                 #use bayes rule to find p_j_given_x
                 sum_pj = sum([p_x_given_j[j] * self.alpha[j] for j in xrange(self.n_comp)])
                 p_j_given_x = [p_x_given_j[j] * self.alpha[j]/sum_pj for j in xrange(self.n_comp)]
 
-
-                #otherwise we update all the components with the new data
+                #do updates exactly as specified in the paper
                 for j in xrange(self.n_comp):
                     self.v[j] += 1
                     self.sp[j] += p_j_given_x[j]
@@ -92,9 +94,21 @@ class IGMM:
                     ej_star = X - self.mu[j]
                     self.sig[j] = (1-wj)*self.sig[j] + wj*np.outer(ej_star,ej_star) - np.outer(d_uj,d_uj)
 
+            # check if any components need to be removed
+            idx2remove = [j for j in xrange(self.n_comp) if self.v[j] > self.v_min and self.sp[j] < self.sp_min]
+            for j in sorted(idx2remove, reverse=True):
+                self.n_comp -= 1
+                del self.mu[j]
+                del self.sig[j]
+                del self.v[j]
+                del self.sp[j]
+                del self.alpha[j]
+
             #normalize alpha values after all sp updates
             sum_sp = float(sum(self.sp))
             self.alpha = [self.sp[j]/sum_sp for j in xrange(self.n_comp)]
+
+
 
 
     def plot(self,ax):
@@ -117,8 +131,8 @@ if __name__ == "__main__":
     # load data from file
     data = GenerateData.load_csv(DATA_FILE)
     # add some noise
-    c = 0.5 * np.identity(2)
-    noisy_data = GenerateData.noisy_observations(data, 5, c, True)
+    c = 0.4 * np.identity(2)
+    noisy_data = GenerateData.noisy_observations(data, 10, c, True)
 
     #add data points
     X = []
