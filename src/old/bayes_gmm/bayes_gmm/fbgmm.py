@@ -1,40 +1,43 @@
 """
 Author: Herman Kamper
-Contact: h.kamper@sms.ed.ac.uk
+Contact: kamperh@gmail.com
 Date: 2014
 """
 
-from numpy.linalg import cholesky, det, inv, slogdet
-from scipy.misc import logsumexp
-from scipy.special import gammaln
 import logging
-import math
-import numpy as np
 import time
 
+import numpy as np
+from scipy.misc import logsumexp
+from scipy.special import gammaln
+
+import utils
 from gaussian_components import GaussianComponents
 from gaussian_components_diag import GaussianComponentsDiag
 from gaussian_components_fixedvar import GaussianComponentsFixedVar
-import utils
 
 logger = logging.getLogger(__name__)
 
 
 #-----------------------------------------------------------------------------#
-#                                  IGMM CLASS                                 #
+#                                 FBGMM CLASS                                 #
 #-----------------------------------------------------------------------------#
 
-class IGMM(object):
+class FBGMM(object):
     """
-    An infinite Gaussian mixture model (IGMM).
+    A finite Bayesian Gaussian mixture model (FBGMM).
 
-    See `GaussianComponents` for an overview of the parameters not mentioned
-    below.
+    See `GaussianComponents` or `GaussianComponentsDiag` for an overview of the
+    parameters not mentioned below.
 
     Parameters
     ----------
     alpha : float
-        Concentration parameter for the Dirichlet process.
+        Concentration parameter for the symmetric Dirichlet prior over the
+        mixture weights.
+    K : int
+        The number of mixture components. This is actually a maximum number,
+        and it is possible to empty out some of these components.
     assignments : vector of int or str
         If vector of int, this gives the initial component assignments. The
         vector should therefore have N entries between 0 and `K`. Values of
@@ -42,19 +45,14 @@ class IGMM(object):
         any component. Alternatively, `assignments` can take one of the
         following values:
         - "rand": Vectors are assigned randomly to one of `K` components.
-        - "one-by-one": Vectors are assigned one at a time; the value of
-          `K` becomes irrelevant.
         - "each-in-own": Each vector is assigned to a component of its own.
-    K : int
-        The initial number of mixture components: this is only used when
-        `assignments` is "rand".
     covariance_type : str
         String describing the type of covariance parameters to use. Must be
         one of "full", "diag" or "fixed".
     """
 
     def __init__(
-            self, X, prior, alpha, assignments="rand", K=1, K_max=None,
+            self, X, prior, alpha, K, assignments="rand",
             covariance_type="full"
             ):
 
@@ -71,9 +69,6 @@ class IGMM(object):
                     assignments[np.where(assignments > k)] -= 1
                 if assignments.max() == k:
                     break
-        elif assignments == "one-by-one":
-            assignments = -1*np.ones(N, dtype="int")
-            assignments[0] = 0  # first data vector belongs to first component
         elif assignments == "each-in-own":
             assignments = np.arange(N)
         else:
@@ -81,36 +76,38 @@ class IGMM(object):
             pass
 
         if covariance_type == "full":
-            self.components = GaussianComponents(X, prior, assignments, K_max)
+            self.components = GaussianComponents(X, prior, assignments, K_max=K)
         elif covariance_type == "diag":
-            self.components = GaussianComponentsDiag(X, prior, assignments, K_max)
+            self.components = GaussianComponentsDiag(X, prior, assignments, K_max=K)
         elif covariance_type == "fixed":
-            self.components = GaussianComponentsFixedVar(X, prior, assignments, K_max)
+            self.components = GaussianComponentsFixedVar(X, prior, assignments, K_max=K)
         else:
             assert False, "Invalid covariance type."
 
     def log_marg(self):
         """Return log marginal of data and component assignments: p(X, z)"""
 
-        # Log probability of component assignment P(z|alpha)
-        # Equation (10) in Wood and Black, 2008
-        # Use \Gamma(n) = (n - 1)!
-        facts_ = gammaln(self.components.counts[:self.components.K])
-        facts_[self.components.counts[:self.components.K] == 0] = 0  # definition of log(0!)
+        # Log probability of component assignment, (24.24) in Murphy, p. 842
         log_prob_z = (
-            (self.components.K - 1)*math.log(self.alpha) + gammaln(self.alpha)
-            - gammaln(np.sum(self.components.counts[:self.components.K])
-            + self.alpha) + np.sum(facts_)
+            gammaln(self.alpha)
+            - gammaln(self.alpha + np.sum(self.components.counts))
+            + np.sum(
+                gammaln(
+                    self.components.counts
+                    + float(self.alpha)/self.components.K_max
+                    )
+                - gammaln(self.alpha/self.components.K_max)
+                )
             )
 
+        # Log probability of data in each component
         log_prob_X_given_z = self.components.log_marg()
 
         return log_prob_z + log_prob_X_given_z
 
-    # @profile
     def gibbs_sample(self, n_iter):
         """
-        Perform `n_iter` iterations Gibbs sampling on the IGMM.
+        Perform `n_iter` iterations Gibbs sampling on the FBGMM.
 
         A record dict is constructed over the iterations, which contains
         several fields describing the sampling process. Each field is described
@@ -129,10 +126,6 @@ class IGMM(object):
         for i_iter in range(n_iter):
 
             # Loop over data items
-            # import random
-            # permuted = range(self.components.N)
-            # random.shuffle(permuted)
-            # for i in permuted:
             for i in xrange(self.components.N):
 
                 # Cache some old values for possible future use
@@ -144,18 +137,25 @@ class IGMM(object):
                 self.components.del_item(i)
 
                 # Compute log probability of `X[i]` belonging to each component
-                log_prob_z = np.zeros(self.components.K + 1, np.float)
-                # (25.35) in Murphy, p. 886
-                log_prob_z[:self.components.K] = np.log(self.components.counts[:self.components.K])
-                # (25.33) in Murphy, p. 886
+                # (24.26) in Murphy, p. 843
+                log_prob_z = (
+                    np.ones(self.components.K_max)*np.log(
+                        float(self.alpha)/self.components.K_max + self.components.counts
+                        )
+                    )
+                # (24.23) in Murphy, p. 842
                 log_prob_z[:self.components.K] += self.components.log_post_pred(i)
-                # Add one component to which nothing has been assigned
-                log_prob_z[-1] = math.log(self.alpha) + self.components.cached_log_prior[i]
+                # Empty (unactive) components
+                log_prob_z[self.components.K:] += self.components.log_prior(i)
                 prob_z = np.exp(log_prob_z - logsumexp(log_prob_z))
 
                 # Sample the new component assignment for `X[i]`
                 k = utils.draw(prob_z)
-                # logger.debug("Sampled k = " + str(k) + " from " + str(prob_z) + ".")
+
+                # There could be several empty, unactive components at the end
+                if k > self.components.K:
+                    k = self.components.K
+                # print prob_z, k, prob_z[k]
 
                 # Add data item X[i] into its component `k`
                 if k == k_old and self.components.K == K_old:
@@ -199,13 +199,13 @@ def main():
 
     # Data parameters
     D = 2           # dimensions
-    N = 20         # number of points to generate
+    N = 10          # number of points to generate
     K_true = 4      # the true number of components
 
     # Model parameters
     alpha = 1.
-    K = 3           # initial number of components
-    n_iter = 20
+    K = 6           # number of components
+    n_iter = 10
 
     # Generate data
     mu_scale = 4.0
@@ -222,15 +222,12 @@ def main():
     S_0 = covar_scale**2*v_0*np.eye(D)
     prior = NIW(m_0, k_0, v_0, S_0)
 
-    # Setup IGMM
-    igmm = IGMM(X, prior, alpha, assignments="rand", K=K)
-    # igmm = IGMM(X, prior, alpha, assignments="each-in-own")
-    # igmm = IGMM(X, prior, alpha, assignments="one-by-one", K=K)
+    # Setup FBGMM
+    fmgmm = FBGMM(X, prior, alpha, K, "rand")
 
     # Perform Gibbs sampling
-    logger.info("Initial log marginal prob: " + str(igmm.log_marg()))
-    record = igmm.gibbs_sample(n_iter)
-    logger.info("Assignments: " + str(igmm.components.assignments))
+    logger.info("Initial log marginal prob: " + str(fmgmm.log_marg()))
+    record = fmgmm.gibbs_sample(n_iter)
 
 
 if __name__ == "__main__":

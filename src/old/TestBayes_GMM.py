@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import sys
-import GenerateData
+import src.GenerateData
 
 sys.path.append("bayes_gmm")
 
@@ -31,11 +31,11 @@ def main():
 
 
 	#load data from file
-	data = GenerateData.load_csv(DATA_FILE)
+	data = src.GenerateData.load_csv(DATA_FILE)
 
 	#add some noise
 	c = 0.5 * np.identity(2)
-	noisy_data = GenerateData.noisy_observations(data, 3, c, True)
+	noisy_data = src.GenerateData.noisy_observations(data, 3, c, True)
 	mat = data2matrix(noisy_data)
 
 	# Model parameters

@@ -4,11 +4,12 @@ Contact: h.kamper@sms.ed.ac.uk
 Date: 2014
 """
 
-from numpy.linalg import cholesky, det, inv, slogdet
-from scipy.special import gammaln
 import logging
 import math
+
 import numpy as np
+from numpy.linalg import cholesky, inv, slogdet
+from scipy.special import gammaln
 
 import wishart
 

@@ -111,11 +111,11 @@ class IGMM:
 
 
 
-    def plot(self,ax):
+    def plot(self,ax,color='b'):
 
         #plot each component
         for j in xrange(self.n_comp):
-            plot_utils.plot_ellipse(ax, self.mu[j], self.sig[j])
+            plot_utils.plot_ellipse(ax, self.mu[j], self.sig[j],color)
 
 
 
@@ -137,10 +137,10 @@ if __name__ == "__main__":
     #add data points
     X = []
     for pt in noisy_data:
-        gmm.update(pt['xy'])
+        gmm.update(pt['data'])
 
         #put point into X for eas plotting
-        X.append(pt['xy'])
+        X.append(pt['data'])
 
     #plot
     ax = plt.subplot(111)

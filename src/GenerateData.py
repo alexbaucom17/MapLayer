@@ -44,8 +44,8 @@ def noisy_observations(data_in, avg_obs_per_point, cov, shuffle=False):
 
 	#grab each data point and draw random sample from N(xy,cov)
 	for i in idx:
-		data_out.append({'class':data_in[i]['class'],
-						 'xy':np.random.multivariate_normal(data_in[i]['xy'],cov)})
+		data_out.append({'name':data_in[i]['class'],
+						 'data':np.random.multivariate_normal(data_in[i]['xy'],cov)})
 	return data_out
 	
 	

@@ -1,6 +1,7 @@
 import dill as pickle
-import SingleGaussian
 import numpy as np
+
+import SingleGaussian
 
 test = True
 file_name = "temp_file.pkl"
