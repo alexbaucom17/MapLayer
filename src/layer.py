@@ -11,7 +11,7 @@ class Layer:
 
         #keep dict with known classes and their respective models
         self.class_list = {}
-        self.T_nov = 0.2
+        self.T_nov = 0.25
         self.sig_scale = 3
 
         self.debug = True
@@ -38,7 +38,7 @@ class Layer:
 
 
     def plot_layer(self,ax):
-        colorlist = ['b','g','r','c','m','y','k']
+        colorlist = ['b','g','r','m','k','y','c']
         count = 0
         m = len(colorlist)
         for name,model in self.class_list.iteritems():
@@ -54,8 +54,8 @@ class Layer:
                 #figure scaling doesn't work properly when only plotting the ellipses, idk why but it would be good to fix
 
 
-DATA_FILE = "../data/RegionLocations.csv"
-#DATA_FILE = "../data/ObjectLocations.csv"
+#DATA_FILE = "../data/RegionLocations.csv"
+DATA_FILE = "../data/ObjectLocations.csv"
 
 if __name__ == "__main__":
 
