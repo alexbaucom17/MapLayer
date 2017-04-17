@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 
-DATA_FILE = "../data/ObjectLocations.csv"
+DATA_FILE = "../../../data/ObjectLocations.csv"
 
 def load_csv(fname):
 	data = []
