@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import numpy as np
 import GenerateData
 import plot_utils
@@ -10,7 +12,7 @@ class IGMM:
     Based on "Incremental Learning of Multivariate Gaussian Mixture Models" by Engel and Heinen
     """
 
-    def __init__(self,n,sig_init,T_nov,v_min=5.0,sp_min=3.0):
+    def __init__(self,n,sig_init,T_nov,v_min=5.0,sp_min=2.5):
         """Initialize igmm
             
             Parameters:
@@ -19,6 +21,8 @@ class IGMM:
                 T_nov - novelty constant 0 < T_nov <= 1, defines distance that new data point must be from
                     any other components in order to create a new component. Bigger means that more components will be
                     created and T_nov = 1 means that every point will have a new component. The authors used 0.01             
+				v_min - how many updates must pass before checking if a component should be removed
+				sp_min - minimum cumulative probability to keep a component
         """
 
         self.n_dim = n

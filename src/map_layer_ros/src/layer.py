@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import numpy as np
 import igmm
@@ -54,8 +55,8 @@ class Layer:
                 #figure scaling doesn't work properly when only plotting the ellipses, idk why but it would be good to fix
 
 
-#DATA_FILE = "../data/RegionLocations.csv"
-DATA_FILE = "../data/ObjectLocations.csv"
+#DATA_FILE = "../../../data/RegionLocations.csv"
+DATA_FILE = "../../../data/ObjectLocations.csv"
 
 if __name__ == "__main__":
 
