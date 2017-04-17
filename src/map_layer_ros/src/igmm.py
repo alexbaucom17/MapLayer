@@ -113,6 +113,18 @@ class IGMM:
             self.alpha = [self.sp[j]/sum_sp for j in xrange(self.n_comp)]
 
 
+    def get_most_likely(self):
+        return self.mu[np.argmax(self.sp)]
+        
+    def get_closest(self,xy):
+        best_dist = float("Inf")
+        best_mu = None
+        for mu in self.mu:
+            dist = np.linalg.norm(xy-mu)
+            if  dist < best_dist:
+                best_dist = dist
+                best_mu = mu
+        return best_mu
 
 
     def plot(self,ax,color='b'):

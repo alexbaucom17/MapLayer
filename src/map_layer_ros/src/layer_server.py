@@ -4,9 +4,12 @@
 
 import rospy
 from map_layer_ros.msg import observation
+from map_layer_ros.srv import SimpleLookup,SimpleLookupRequest, SimpleLookupResponse
 import layer
 import numpy as np
 import matplotlib.pyplot as plt
+from geometry_msgs.msg import Pose2D
+
 
 #default values for layer parameters
 default_cov_scale = 5.0
@@ -14,10 +17,12 @@ default_T_nov = 0.1
 default_v_min = 5.0
 default_sp_min = 2.5
 
+layer_objects = {}
+
 
 class layer_instance:
 	def __init__(self,layer_name,cfg_dict,plot=False,save_imgs=False):
-		"""Create and instance of a layer
+		"""Create an instance of a layer
 				layer_name - string to identify the layer
 				cfg_dict - configuration loaded from ros parameter server
 				plot - if plots should be displayed, only works if a single layer is created due to limitations with tkinter in multithreaded programs
@@ -77,14 +82,14 @@ class layer_instance:
 
 		#print for debugging
 		rospy.loginfo("Layer [%s] - got an observation of %s",self.name, data.name)
-		
+
 		#add observation to layer
 		obs = {'name':data.name, 'data':np.array([data.x,data.y])}
 		self.L.add_observation(obs)
 
 		#show plot if desired
 		if self.plot:
-			
+
 			#create axes if needed
 			if not self.ax:
 				plt.figure()
@@ -100,6 +105,32 @@ class layer_instance:
 				plt.savefig('imgs/tmp'+str(self.count)+'.png', bbox_inches='tight')
 				self.count += 1
 
+	def get_closest(self,class_name,xy):
+		return self.L.get_closest(class_name,xy)
+
+	def get_most_likely(self,class_name):
+		return self.L.get_most_likely(class_name)
+
+    
+    
+    
+
+def SimpleLookupCallback(req):
+	"""Perform simple lookup service
+		req has 4 fields: layer_name, class_name, modifier, and possibly a pose
+		This service is expected to return an xy location and possibly a class name"""
+		
+
+	if req.modifier == "most_likely":
+		xy = layer_objects[req.layer_name].get_most_likely(req.class_name)
+		return {'x':xy[0], 'y':xy[1]} #using a dict populates the correct response field for the service
+	elif req.modifier == "closest":
+	    xy_pose = np.array([req.pose.x,req.pose.y])
+	    ret_dict = layer_objects[req.layer_name].get_closest(req.class_name,xy_pose)
+	    return {'class_name':ret_dict['class_name'],'x':ret_dict['xy'][0], 'y':ret_dict['xy'][1]}
+		
+			
+
 
     
 def layer_server():
@@ -112,7 +143,7 @@ def layer_server():
 	layer_name_list = layer_names.split()
 
 	#set up layers
-	layer_objects = {}
+	global layer_objects
 	for name in layer_name_list:
 
 		#load layer configuration parameters
@@ -121,7 +152,8 @@ def layer_server():
 		#create layers with given configuration
 		layer_objects[name] = layer_instance(name,layer_cfg)	
 
-	rospy.loginfo("Server ready")
+	s = rospy.Service("map_layer_simple_lookup",SimpleLookup,SimpleLookupCallback)
+	rospy.loginfo("Map Layer Server ready")
 
 	# spin() simply keeps python from exiting until this node is stopped
 	rospy.spin()

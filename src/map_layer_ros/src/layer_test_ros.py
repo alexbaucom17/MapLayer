@@ -26,13 +26,13 @@ def talker():
 	noisy_data1 = GenerateData.noisy_observations(data1, 10, c, True)
 
 	# load data from object file
-	data2 = GenerateData.load_csv(DATA_FILE1)
+	data2 = GenerateData.load_csv(DATA_FILE2)
 	# add some noise
 	c = 0.3 * np.identity(2)
 	noisy_data2 = GenerateData.noisy_observations(data2, 10, c, True)
 
 	#loop
-	rate = rospy.Rate(3)
+	rate = rospy.Rate(10)
 	count1 = 0 
 	count2 = 0
 	n1 = len(noisy_data1)
