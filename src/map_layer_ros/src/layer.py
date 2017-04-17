@@ -8,15 +8,17 @@ import matplotlib.pyplot as plt
 class Layer:
     """Class that holds a layer of the map represented as several igmms"""
 
-    def __init__(self):
+    def __init__(self,sig_scale=3.0,T_nov=0.25,v_min=5.0,sp_min=2.5):
 
-        #keep dict with known classes and their respective models
-        self.class_list = {}
-        self.T_nov = 0.25
-        self.sig_scale = 3
+		#keep dict with known classes and their respective models
+		self.class_list = {}
+		self.T_nov =  T_nov 
+		self.sig_scale = sig_scale
+		self.v_min = v_min
+		self.sp_min = sp_min
 
-        self.debug = True
-        self.debug_list = {}
+		self.debug = True
+		self.debug_list = {}
 
     def add_observation(self,obs):
         """obs - observation dict with fields
@@ -31,7 +33,7 @@ class Layer:
 
         else:
             n = obs["data"].shape[0]
-            self.class_list[obs["name"]] = igmm.IGMM(n, self.sig_scale, self.T_nov)
+            self.class_list[obs["name"]] = igmm.IGMM(n, self.sig_scale, self.T_nov,self.v_min,self.sp_min)
             self.class_list[obs["name"]].update(obs["data"])
 
             if self.debug:

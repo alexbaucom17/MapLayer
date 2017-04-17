@@ -6,39 +6,68 @@ import GenerateData
 import numpy as np
 
 
-#DATA_FILE = "../../../data/RegionLocations.csv"
-DATA_FILE = "../../../data/ObjectLocations.csv"
+DATA_FILE1 = "../../../data/RegionLocations.csv"
+DATA_FILE2 = "../../../data/ObjectLocations.csv"
 
 
 def talker():
+	"""Sets up two data streams and publishes semi-random noisy data for testing map layer code"""
 
 	#initialize node and publishcer
-	pub = rospy.Publisher('layer_observations', observation, queue_size=10)
+	pub2 = rospy.Publisher('object_obs', observation, queue_size=10)
+	pub1 = rospy.Publisher('region_obs', observation, queue_size=10)
 	rospy.init_node('talker')
 
 
-	# load data from file
-	data = GenerateData.load_csv(DATA_FILE)
+	# load data from region file
+	data1 = GenerateData.load_csv(DATA_FILE1)
 	# add some noise
 	c = 0.3 * np.identity(2)
-	noisy_data = GenerateData.noisy_observations(data, 10, c, True)
+	noisy_data1 = GenerateData.noisy_observations(data1, 10, c, True)
+
+	# load data from object file
+	data2 = GenerateData.load_csv(DATA_FILE1)
+	# add some noise
+	c = 0.3 * np.identity(2)
+	noisy_data2 = GenerateData.noisy_observations(data2, 10, c, True)
 
 	#loop
 	rate = rospy.Rate(3)
-	count = 0 
-	n = len(noisy_data)
+	count1 = 0 
+	count2 = 0
+	n1 = len(noisy_data1)
+	n2 = len(noisy_data2)
 	while not rospy.is_shutdown():
-        
-		if count < n:
-			obs = observation()
-			obs.name = noisy_data[count]['name']
-			obs.x = noisy_data[count]['data'][0]
-			obs.y = noisy_data[count]['data'][1]
-			pub.publish(obs)
-			rospy.loginfo("Data published %i", count)
-			count += 1
+
+		#hacky way to have semi-random input stream with multiple layers
+		if np.random.uniform() > 0.5:
+		    
+			#create observation on one topic
+			if count1 < n1:
+				obs = observation()
+				obs.name = noisy_data1[count1]['name']
+				obs.x = noisy_data1[count1]['data'][0]
+				obs.y = noisy_data1[count1]['data'][1]
+				pub1.publish(obs)
+				rospy.loginfo("[Data1] published %i", count1)
+				count1 += 1
+			else:
+				rospy.loginfo("[Data1] Out of data to publish")
+
 		else:
-			rospy.loginfo("Out of data to publish")
+
+			#create observation on a different topic
+			if count2 < n2:
+				obs = observation()
+				obs.name = noisy_data2[count2]['name']
+				obs.x = noisy_data2[count2]['data'][0]
+				obs.y = noisy_data2[count2]['data'][1]
+				pub2.publish(obs)
+				rospy.loginfo("[Data2] published %i", count2)
+				count2 += 1
+			else:
+				rospy.loginfo("[Data2] Out of data to publish")
+		
 
 		rate.sleep()
 
