@@ -126,6 +126,11 @@ class IGMM:
                 best_mu = mu
         return best_mu
 
+    def get_means(self):
+        return self.mu
+		
+    def get_covs(self):
+        return self.sig
 
     def plot(self,ax,color='b'):
 

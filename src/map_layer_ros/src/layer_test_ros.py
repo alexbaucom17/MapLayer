@@ -32,7 +32,7 @@ def talker():
 	noisy_data2 = GenerateData.noisy_observations(data2, 10, c, True)
 
 	#loop
-	rate = rospy.Rate(10)
+	rate = rospy.Rate(5)
 	count1 = 0 
 	count2 = 0
 	n1 = len(noisy_data1)

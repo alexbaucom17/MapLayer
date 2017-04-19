@@ -39,6 +39,17 @@ class Layer:
             if self.debug:
                 self.debug_list[obs["name"]] = [obs["data"]]
 
+    def get_viz_data(self):
+        """Get data for visualization"""
+
+        viz_data = []
+        for name,model in self.class_list.iteritems():
+            cur_data = {'name':name,'debug_points':self.debug_list[name]}
+            cur_data['means'] = model.get_means()
+            cur_data['covs'] = model.get_covs()
+            viz_data.append(cur_data)
+        return viz_data
+
     def get_most_likely(self,class_name):
         """Class name is a string, returns a numpy array"""
         return self.class_list[class_name].get_most_likely()
@@ -62,8 +73,6 @@ class Layer:
             return {'class_name':best_class,'xy':best_mu}
         else:
             return {'class_name':class_name,'xy':self.class_list[class_name].get_closest(xy)}
-                
-
 
     def plot_layer(self,ax):
         colorlist = ['b','g','r','m','k','y','c']

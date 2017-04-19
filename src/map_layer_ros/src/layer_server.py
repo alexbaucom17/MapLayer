@@ -8,7 +8,10 @@ from map_layer_ros.srv import SimpleLookup,SimpleLookupRequest, SimpleLookupResp
 import layer
 import numpy as np
 import matplotlib.pyplot as plt
-from geometry_msgs.msg import Pose2D
+from geometry_msgs.msg import Pose2D, Point
+from visualization_msgs.msg import Marker
+from std_msgs.msg import ColorRGBA
+import copy
 
 
 #default values for layer parameters
@@ -21,12 +24,13 @@ layer_objects = {}
 
 
 class layer_instance:
-	def __init__(self,layer_name,cfg_dict,plot=False,save_imgs=False):
+	def __init__(self,layer_name,cfg_dict,plot=False,save_imgs=False,publish=True):
 		"""Create an instance of a layer
 				layer_name - string to identify the layer
 				cfg_dict - configuration loaded from ros parameter server
 				plot - if plots should be displayed, only works if a single layer is created due to limitations with tkinter in multithreaded programs
-				save_imgs - to save plotted images for creating animation later """
+				save_imgs - to save plotted images for creating animation later
+				publish - to publish visualization markers on a ros topic """
 
 		#check for proper configuration
 		if 'observation_topic' in cfg_dict:
@@ -70,6 +74,11 @@ class layer_instance:
 		#save info
 		self.name = layer_name
 		self.cfg_dict = cfg_dict
+		self.publish = publish
+		
+		if self.publish:
+			self.marker_pub = rospy.Publisher(self.name+"_markers"	, Marker, queue_size = 100)
+			
 
 		#set up plotting stuff
 		self.plot = plot
@@ -86,6 +95,15 @@ class layer_instance:
 		#add observation to layer
 		obs = {'name':data.name, 'data':np.array([data.x,data.y])}
 		self.L.add_observation(obs)
+		
+		#get data points for vizualization and publish
+		if self.publish:
+			data = self.L.get_viz_data()
+			points_list = [(x,class_data['name']) for class_data in data for x in class_data['means']]
+			names = [x[1] for x in points_list]
+			points_2d = [x[0] for x in points_list]
+			points_3d = to3dPoints(points_2d)
+			self.publish_points(points_3d,names)
 
 		#show plot if desired
 		if self.plot:
@@ -110,10 +128,102 @@ class layer_instance:
 
 	def get_most_likely(self,class_name):
 		return self.L.get_most_likely(class_name)
+		
+	def publish_points(self,point_list,name_list):
+		"""Prep marker message with points and publish"""
+		
+		#get a list of color definitions to map to
+		n_colors = 7
+		color_defn = [ColorRGBA() for i in xrange(n_colors)]
+		#set all alpha values to 1 so they are visible
+		for i in xrange(n_colors):
+			color_defn[i].a = 1.0
+		#red
+		color_defn[0].r = 1.0
+		#green
+		color_defn[1].g = 1.0
+		#blue
+		color_defn[2].b = 1.0
+		#white
+		color_defn[3].r = 1.0
+		color_defn[3].g = 1.0
+		color_defn[3].b = 1.0
+		#red+green
+		color_defn[4].r = 1.0
+		color_defn[4].g = 1.0
+		#red+blue
+		color_defn[5].r = 1.0
+		color_defn[5].b = 1.0
+		#green + blue
+		color_defn[6].g = 1.0
+		color_defn[6].b = 1.0
+		
+		name_map = {}
+		color_list = []
+		count = 0		
+		#set up and publish name of each point	
+		for i in xrange(len(point_list)):
+			viz_text = Marker()
+			viz_text.header.frame_id = "/map"
+			viz_text.header.stamp = rospy.get_rostime()
+			viz_text.ns = self.name+"_text"
+			viz_text.id = i
+		
+			viz_text.action = Marker.ADD
+			viz_text.type = Marker.TEXT_VIEW_FACING
+			viz_text.scale.z = 0.4
+			viz_text.color.a = 1.0
+			viz_text.color.r = 1.0
+			viz_text.color.g = 1.0
+			viz_text.color.b = 2.0
+			
+			viz_text.pose.orientation.w = 1.0
+			viz_text.pose.position = copy.deepcopy(point_list[i])
+			viz_text.pose.position.z += 0.4 #move text up a little bit
+			viz_text.text = "["+self.name+"] "+name_list[i]
+			self.marker_pub.publish(viz_text)
+			
+			#create mapping for this name if we haven't seen it yet
+			if name_list[i] not in name_map:
+				name_map[name_list[i]] = count%n_colors #make colors wrap if there aren't enough
+				count += 1
+			
+			#create list of colors to corespond to class names
+			color_list.append(color_defn[name_map[name_list[i]]])
+			
+			#end for	
+		
+		#publish the actual points	
+		viz_points = Marker()
+		viz_points.header.frame_id = "/map"
+		viz_points.header.stamp = rospy.get_rostime()
+		viz_points.ns = self.name+"_points"
+		
+		viz_points.action = Marker.ADD
+		viz_points.type = Marker.POINTS
+		viz_points.pose.orientation.w = 1.0
+		
+		viz_points.scale.x = 0.2
+		viz_points.scale.y = 0.2
+		viz_points.colors = color_list 
+		
+		viz_points.points = point_list
+		self.marker_pub.publish(viz_points)
+			
+		
 
-    
-    
-    
+def to3dPoints(points_2d):
+	"""Simple function to take list of 2d coordinates and output list of 3d ros points"""
+
+	points_3d = []
+	for (x,y) in points_2d:
+		p = Point() 
+		p.x = x
+		p.y = y
+		p.z = 0
+		points_3d.append(p)    
+	return points_3d
+	
 
 def SimpleLookupCallback(req):
 	"""Perform simple lookup service
@@ -124,11 +234,15 @@ def SimpleLookupCallback(req):
 	if req.modifier == "most_likely":
 		xy = layer_objects[req.layer_name].get_most_likely(req.class_name)
 		return {'x':xy[0], 'y':xy[1]} #using a dict populates the correct response field for the service
+		
 	elif req.modifier == "closest":
 	    xy_pose = np.array([req.pose.x,req.pose.y])
 	    ret_dict = layer_objects[req.layer_name].get_closest(req.class_name,xy_pose)
 	    return {'class_name':ret_dict['class_name'],'x':ret_dict['xy'][0], 'y':ret_dict['xy'][1]}
-		
+	    
+	else:
+		rospy.logerr('Unknown modifier request')
+		return None		
 			
 
 
@@ -151,7 +265,8 @@ def layer_server():
 
 		#create layers with given configuration
 		layer_objects[name] = layer_instance(name,layer_cfg)	
-
+		
+	#set up service hanlder
 	s = rospy.Service("map_layer_simple_lookup",SimpleLookup,SimpleLookupCallback)
 	rospy.loginfo("Map Layer Server ready")
 
