@@ -6,8 +6,8 @@ import GenerateData
 import numpy as np
 
 
-DATA_FILE1 = "../../../data/RegionLocations.csv"
-DATA_FILE2 = "../../../data/ObjectLocations.csv"
+DATA_FILE1 = "../../../data/MapBasedRegionLocations.csv"
+DATA_FILE2 = "../../../data/MapBasedObjectLocations.csv"
 
 
 def talker():
@@ -22,14 +22,14 @@ def talker():
 	# load data from region file
 	data1 = GenerateData.load_csv(DATA_FILE1)
 	# add some noise
-	c = 0.3 * np.identity(2)
-	noisy_data1 = GenerateData.noisy_observations(data1, 10, c, True)
+	c = 0.6 * np.identity(2)
+	noisy_data1 = GenerateData.noisy_observations(data1, 5, c, True)
 
 	# load data from object file
 	data2 = GenerateData.load_csv(DATA_FILE2)
 	# add some noise
 	c = 0.3 * np.identity(2)
-	noisy_data2 = GenerateData.noisy_observations(data2, 10, c, True)
+	noisy_data2 = GenerateData.noisy_observations(data2, 5, c, True)
 
 	#loop
 	rate = rospy.Rate(5)
