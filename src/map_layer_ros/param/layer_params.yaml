@@ -2,14 +2,14 @@ layer_names: regions objects
 
 regions:
   observation_topic: region_obs
-  covariance_scale: 5.0
-  novelty_constant: 0.25
-  v_min: 5.0
+  covariance_scale: 3.0
+  novelty_constant: 0.2
+  v_min: 6.0
   sp_min: 2.5
 
 objects:
   observation_topic: object_obs
   covariance_scale: 1.0
-  novelty_constant: 0.4
+  novelty_constant: 0.2
   v_min: 6.0
-  sp_min: 2.5
+  sp_min: 2.0
