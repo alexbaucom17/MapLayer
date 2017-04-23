@@ -17,7 +17,7 @@ class Layer:
         self.v_min = v_min
         self.sp_min = sp_min
 
-        self.debug = True
+        self.debug = False
         self.debug_list = {}
 
     def add_observation(self,obs):
@@ -44,9 +44,11 @@ class Layer:
 
         viz_data = []
         for name,model in self.class_list.iteritems():
-            cur_data = {'name':name,'debug_points':self.debug_list[name]}
+            cur_data = {'name':name}
             cur_data['means'] = model.get_means()
             cur_data['covs'] = model.get_covs()
+            if self.debug:
+            	cur_data['debug_points'] = self.debug_list[name]
             viz_data.append(cur_data)
         return viz_data
 

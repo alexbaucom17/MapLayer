@@ -12,6 +12,8 @@ from geometry_msgs.msg import Pose2D, Point
 from visualization_msgs.msg import Marker
 from std_msgs.msg import ColorRGBA
 import copy
+import os
+import dill as pickle
 
 
 #default values for layer parameters
@@ -20,7 +22,6 @@ default_T_nov = 0.1
 default_v_min = 5.0
 default_sp_min = 2.5
 
-layer_objects = {}
 
 
 class layer_instance:
@@ -244,27 +245,52 @@ def SimpleLookupCallback(req):
 		rospy.logerr('Unknown modifier request')
 		return None		
 			
-
+#set file to save when done
+def shutdown_hook():
+	global layer_objects
+	if rospy.has_param("~layer_file"):			
+		layer_file = rospy.get_param("~layer_file")
+		pickle.dump( layer_objects, open( layer_file, "wb" ) )
+		rospy.loginfo("Layer file saved  "+layer_file)
+	
 
     
 def layer_server():
 		
 	#start node
 	rospy.init_node('map_layer_server')
+	#rospy.on_shutdown(shutdown_hook)
 
-	#load parameters
-	layer_names = rospy.get_param("~layer_names")
-	layer_name_list = layer_names.split()
-
-	#set up layers
+	#check if there is a file name
 	global layer_objects
-	for name in layer_name_list:
+	layer_objects = None
+	layer_file = None
+	if rospy.has_param("~layer_file"):
+		layer_file = rospy.get_param("~layer_file")
+		rospy.loginfo("Map server set to load and save data")
+		
+		#check if this file exists, if so, load from it
+		if os.path.isfile(layer_file):
+			rospy.loginfo("Layer file loaded from "+layer_file)
+			layer_objects = pickle.load( open( layer_file, "rb" ) )		
+	
+	#otherwise create everything from scratch
+	if not layer_objects:
+		layer_file = None
+		
+		#load parameters
+		layer_names = rospy.get_param("~layer_names")
+		layer_name_list = layer_names.split()
+		layer_objects = {}
 
-		#load layer configuration parameters
-		layer_cfg = rospy.get_param("~"+name)
+		#set up layers
+		for name in layer_name_list:
 
-		#create layers with given configuration
-		layer_objects[name] = layer_instance(name,layer_cfg)	
+			#load layer configuration parameters
+			layer_cfg = rospy.get_param("~"+name)
+
+			#create layers with given configuration
+			layer_objects[name] = layer_instance(name,layer_cfg)	
 		
 	#set up service hanlder
 	s = rospy.Service("map_layer_simple_lookup",SimpleLookup,SimpleLookupCallback)
@@ -272,6 +298,7 @@ def layer_server():
 
 	# spin() simply keeps python from exiting until this node is stopped
 	rospy.spin()
+		
 
 if __name__ == '__main__':
     layer_server()
