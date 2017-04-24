@@ -23,8 +23,7 @@ Set parameters in map_layer_ros/params/layer_params.yaml (or edit the launch fil
 ```
 layer_names: regions objects
 
-#Saving and loading not implimented yet
-#layer_file: /home/alex/MapLayer/data/test_layer_save.pickle
+layer_file: /home/alex/MapLayer/data/test_layer_save.pickle
 
 regions:
   observation_topic: region_obs
@@ -43,7 +42,7 @@ objects:
 
 Parameters:
 - layer_name: must be a space delimited list of strings that are the names of each layer. Each layer name here must have a block defined below as well
-- layer_file: where to save and load data to. Not in use yet.
+- layer_file: where to save and load data to. Comment out to ignore loading and saving. If new layers are specified in the parameter file that were not saved in the file, they will be created new. Old layers that were saved will not re-load parameters. A file will automatically be saved here when the service is killed.
 - For each layer:
     - observation_topic: string that defines the topic that observations will come in on
     - covariance_scale: The scale to use for initializing a new mixture component

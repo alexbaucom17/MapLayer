@@ -1,7 +1,6 @@
 layer_names: regions objects
 
-#Saving and loading not implimented yet
-#layer_file: /home/alex/MapLayer/data/test_layer_save.pickle
+layer_file: /home/alex/MapLayer/data/test_layer_save.pickle
 
 regions:
   observation_topic: region_obs

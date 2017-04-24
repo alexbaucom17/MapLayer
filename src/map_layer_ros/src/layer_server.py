@@ -25,7 +25,7 @@ default_sp_min = 2.5
 
 
 class layer_instance:
-	def __init__(self,layer_name,cfg_dict,plot=False,save_imgs=False,publish=True):
+	def __init__(self,layer_name,cfg_dict,plot=False,save_imgs=False,publish=True,layer_data=None):
 		"""Create an instance of a layer
 				layer_name - string to identify the layer
 				cfg_dict - configuration loaded from ros parameter server
@@ -36,7 +36,10 @@ class layer_instance:
 		#check for proper configuration
 		if 'observation_topic' in cfg_dict:
 			obs_topic = cfg_dict['observation_topic']
-			rospy.loginfo('Layer [%s] - Setting up layer with observation on topic %s',layer_name, obs_topic)
+			if layer_data:
+				rospy.loginfo('Layer [%s] - Loading from file with observation on topic %s',layer_name, obs_topic)
+			else:
+				rospy.loginfo('Layer [%s] - Setting up new layer with observation on topic %s',layer_name, obs_topic)
 		else:
 			rospy.logerr('Layer [%s] - observation_topic is a required parameter',layer_name)
 			obs_topic = "dummy_topic"
@@ -67,7 +70,10 @@ class layer_instance:
 
 
 		#igmm layer
-		self.L = layer.Layer(cov_scale,T_nov,v_min,sp_min)
+		if layer_data:
+			self.L = layer_data
+		else:
+			self.L = layer.Layer(cov_scale,T_nov,v_min,sp_min)
 
 		#observation topic
 		self.sub = rospy.Subscriber(obs_topic, observation, self.callback)
@@ -129,6 +135,9 @@ class layer_instance:
 
 	def get_most_likely(self,class_name):
 		return self.L.get_most_likely(class_name)
+		
+	def get_layer_data(self):
+		return self.L
 		
 	def publish_points(self,point_list,name_list):
 		"""Prep marker message with points and publish"""
@@ -247,10 +256,19 @@ def SimpleLookupCallback(req):
 			
 #set file to save when done
 def shutdown_hook():
-	global layer_objects
+
+	#check if there is a file to save to
 	if rospy.has_param("~layer_file"):			
 		layer_file = rospy.get_param("~layer_file")
-		pickle.dump( layer_objects, open( layer_file, "wb" ) )
+		
+		#extract layer data for saving
+		layer_data = {}
+		global layer_objects
+		for name in layer_objects:
+			layer_data[name] = layer_objects[name].get_layer_data()
+		
+		#save data
+		pickle.dump( layer_data, open( layer_file, "wb" ) )
 		rospy.loginfo("Layer file saved  "+layer_file)
 	
 
@@ -259,12 +277,15 @@ def layer_server():
 		
 	#start node
 	rospy.init_node('map_layer_server')
-	#rospy.on_shutdown(shutdown_hook)
+	rospy.on_shutdown(shutdown_hook)
 
-	#check if there is a file name
+	#init data names
 	global layer_objects
-	layer_objects = None
+	layer_objects = {}
 	layer_file = None
+	layer_data = None
+	
+	#check if there is a file name
 	if rospy.has_param("~layer_file"):
 		layer_file = rospy.get_param("~layer_file")
 		rospy.loginfo("Map server set to load and save data")
@@ -272,24 +293,23 @@ def layer_server():
 		#check if this file exists, if so, load from it
 		if os.path.isfile(layer_file):
 			rospy.loginfo("Layer file loaded from "+layer_file)
-			layer_objects = pickle.load( open( layer_file, "rb" ) )		
+			layer_data = pickle.load( open( layer_file, "rb" ) )		
+
+	#load parameters
+	layer_names = rospy.get_param("~layer_names")
+	layer_name_list = layer_names.split()
 	
-	#otherwise create everything from scratch
-	if not layer_objects:
-		layer_file = None
-		
-		#load parameters
-		layer_names = rospy.get_param("~layer_names")
-		layer_name_list = layer_names.split()
-		layer_objects = {}
+	#set up layers
+	for name in layer_name_list:
 
-		#set up layers
-		for name in layer_name_list:
+		#load layer configuration parameters
+		layer_cfg = rospy.get_param("~"+name)
 
-			#load layer configuration parameters
-			layer_cfg = rospy.get_param("~"+name)
-
-			#create layers with given configuration
+		#create layers with given configuration
+		#reload saved data if available
+		if layer_data and layer_data[name]:
+			layer_objects[name] = layer_instance(name,layer_cfg,layer_data=layer_data[name])
+		else:
 			layer_objects[name] = layer_instance(name,layer_cfg)	
 		
 	#set up service hanlder
