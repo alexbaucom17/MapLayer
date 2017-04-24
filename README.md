@@ -1,10 +1,12 @@
 # MapLayer
-Probabilistic framework for adding semantic map layers
+This is a probabilistic framework for adding semantic map layers. If you have a stream of observations with a location and a name (maybe from an object detector or scene recognizer), this package can cluster those nosiy observations and keep them organized in layers for future reference or lookup.
+
+The ROS wrapper for this code restricts the observations to be 2D but the underlying code can handle any dimensionality of observation and even have layers where each class has a different dimensionality.
 
 Based on Incremental Learning of Multivariate Gaussian Mixture Models by Engel and Heinen
 
 ## Dependencies
-Currently developed with python 2.7.12, numpy 1.11.1, dill 0.2.5, and ROS Indigo
+Currently developed with python 2.7.12, numpy 1.11.1, dill 0.2.5, and ROS Indigo.
 
 If you don't want to use ROS you can simple take all of the source code files except layer_server.py and layer_test_ros.py as these two are only a ROS wrapper for the rest of the code.
 
@@ -60,6 +62,8 @@ Vizualize by setting rviz to show markers on the topic `[Layer_name]_markers`. T
 The layer server also provides a framework for ROS service based lookup requests. There are currently two supported lookup requests that use the same service called SimpleLookup.
 
 The first will take a layer name and a class name and return the most likely location of that class. The second will take a layer name, a class name (or 'any'), and a pose and return the closest location of the speicifed class (or of any class) to the given pose.
+
+The server must have recieved some observations for the speicfied layer and class before these service calls will do anything useful.
 
 Some sample service calls are shown below:
 ```(python)
