@@ -1,0 +1,10 @@
+layer_names: objects
+
+#layer_file: /home/alex/MapLayer/data/test_layer_save.pickle
+
+objects:
+  observation_topic: /object_detector/final_xyLabel 
+  covariance_scale: 1.0
+  novelty_constant: 0.1
+  v_min: 20
+  sp_min: 7.0
