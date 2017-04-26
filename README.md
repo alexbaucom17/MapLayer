@@ -122,7 +122,8 @@ To verify that everything is working properly you can use `rosrun map_layer_ros 
 
 If you are not using the ROS versions of the code, you can use `python layer.py` to test the code. Again, the path to the data might need to be adjusted and you also might need to set the self.debug flag in layer.__init__() to True in order to get the plot to work properly.
 
-## Explanation of files
+## Explanation of source files
+All of these files can be found in map_layer_ros/src/
 - igmm.py - the core file defining the igmm class. Based almost exactly on Incremental Learning of Multivariate Gaussian Mixture Models by Engel and Heinen. 
 - layer.py - defines the layer class which is a collection of igmm classes based on the label name from the observations. If a new label is seen, a new igmm model is created. If a known name is seen, the igmm associated with that layer is updated.
 - layer_server.py - a ROS wrapper for the layer class. Creates as many layers as specified by a ros parameter file and sets up subscriptions to the specified observation topics. Advertises ROS services for lookup requests.
