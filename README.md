@@ -3,12 +3,20 @@ This is a probabilistic framework for adding semantic map layers. If you have a 
 
 The ROS wrapper for this code restricts the observations to be 2D but the underlying code can handle any dimensionality of observation and even have layers where each class has a different dimensionality.
 
-Based on Incremental Learning of Multivariate Gaussian Mixture Models by Engel and Heinen
+Based on 
+
+Engel, Paulo Martins, and Milton Roberto Heinen. "Incremental learning of multivariate gaussian mixture models." Brazilian Symposium on Artificial Intelligence. Springer Berlin Heidelberg, 2010.
+
+and 
+
+Pinto, Rafael Coimbra, and Paulo Martins Engel. "A fast incremental gaussian mixture model." PloS one 10.10 (2015): e0139931.
+
+The first paper outlines the algorithm but the second paper presents a much more concise and clear set of equations for the algorithm. We did not impliment the 'fast' version of the algorithm since the data we were working with was only 2D.
 
 ## Dependencies
 Currently developed with python 2.7.12, numpy 1.11.1, dill 0.2.5, and ROS Indigo.
 
-If you don't want to use ROS you can simple take all of the source code files except layer_server.py and layer_test_ros.py as these two are only a ROS wrapper for the rest of the code.
+If you don't want to use ROS you can simple take all of the source code files except layer_server.py and layer_test_ros.py as these two are only a ROS wrapper for the rest of the code. There is no dimensionality restriction on the base code wheras the ROS version is restriced to 2D because of the observation.msg type.
 
 ## Installation
 
